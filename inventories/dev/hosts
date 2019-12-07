@@ -1,0 +1,6 @@
+[openldap]
+openldap_1 ansible_host=openldap.server.com ansible_user=ajanthan ansible_ssh_private_key_file=id_rsa_ansible ansible_sudo_pass=ajanthan
+
+
+
+

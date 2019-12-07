@@ -1,0 +1,241 @@
+---
+
+- block:
+  - name: Create LDAP directory
+    file:
+      path: "{{ openldap_directory }}/openldap"
+      state: directory
+      mode: 0755
+
+  - name: Create LDAP data directory
+    file:
+      path: "{{ openldap_directory }}/openldap/data"
+      state: directory
+      mode: 0755
+
+  - name: Create LDAP Utils directory
+    file:
+      path: "{{ openldap_directory }}/utils"
+      state: directory
+      mode: 0755
+
+  - name: Create LDAP LDIFs directory
+    file:
+      path: "{{ openldap_directory }}/openldap/ldifs"
+      state: directory
+      mode: 0755
+
+  - name: Create LDAP LDIFs directory
+    file:
+      path: "{{ openldap_directory }}/openldap/logs"
+      state: directory
+      mode: 0755
+  tags: [ createopenldapdir, ldapinstallstep1 ]   
+
+- block:
+  - name: "Copy RPM files to Server - Common"
+    copy:
+       src: "{{ product_package_location }}/openldap/"
+       dest: "{{openldap_directory}}/utils/"       
+  tags: [ copyrpmfiles, ldapinstallstep1 ]
+
+- block:
+  - name: "Install package- openldap."
+    yum:
+       name: "{{openldap_directory}}/utils/openldap-2.4.44-21.el7_6.x86_64.rpm"
+       state: present
+    become: yes
+    become_user: root
+
+  - name: "Install package- compat - openldap."
+    yum:
+       name: "{{openldap_directory}}/utils/compat-openldap-2.3.43-5.el7.x86_64.rpm"
+       state: present
+    become: yes
+    become_user: root
+
+  - name: "Install package- openldap - clients."
+    yum:
+       name: "{{openldap_directory}}/utils/openldap-clients-2.4.44-21.el7_6.x86_64.rpm"
+       state: present
+    become: yes
+    become_user: root
+
+  - name: "Install package- openldap - servers."
+    yum:
+       name: "{{openldap_directory}}/utils/openldap-servers-2.4.44-21.el7_6.x86_64.rpm"
+       state: present
+    become: yes
+    become_user: root
+
+  - name: "Install package- openldap - libodbc."
+    yum:
+       name: "{{openldap_directory}}/utils/unixODBC-2.3.1-14.el7.x86_64.rpm"
+       state: present
+    become: yes
+    become_user: root
+
+  - name: "Install package- openldap - servers - sql."
+    yum:
+       name: "{{openldap_directory}}/utils/openldap-servers-sql-2.4.44-21.el7_6.x86_64.rpm"
+       state: present
+    become: yes
+    become_user: root
+
+  - name: "Install package- cyrus-sasl."
+    yum:
+       name: "{{openldap_directory}}/utils/cyrus-sasl-devel-2.1.26-23.el7.x86_64.rpm"
+       state: present
+    become: yes
+    become_user: root
+
+  - name: "Install package- openldap-devel."
+    yum:
+       name: "{{openldap_directory}}/utils/openldap-devel-2.4.44-21.el7_6.x86_64.rpm"
+       state: present
+    become: yes
+    become_user: root
+  tags: [ ldapinitialinstallation, ldapinstallstep1 ]
+
+- block:
+  - name: "Start slapd service"
+    command: systemctl start slapd.service
+  become: yes
+  become_user: root
+  tags: [ startldapserver, ldapinstallstep1 ]
+
+- block:
+  - name: "Change Open LDAP Server Password"
+    command: "/usr/sbin/slappasswd -h {{ openldap_server_password_hash }} -s {{ openldap_server_rootpw }}"
+    register: rootpwgenerated
+  tags: [ changeopenldappasswd, ldapinstallstep2 ]
+
+- block:
+  - name: Logging
+    debug:
+      msg: "Generated Password: {{ rootpwgenerated.stdout }}"
+  tags: [ ldapinstallstep1, ldapinstallstep2 ]
+
+
+#Configuration
+- block: 
+  - name: "Copy configuration templates"
+    template:
+      src: "{{ item.src }}"
+      dest: "{{ item.dest }}"
+    loop: "{{ config_files }}"
+  tags: [ copyconfigs, ldapinstallstep2 ]
+
+- block:
+  - name: "Update ldapadmin.ldif with password update"
+    template: src=etc/openldap/slapd.d/ldapadmin.ldif.j2 dest={{ openldap_directory }}/openldap/ldifs/ldapadmin.ldif
+  tags: [ updateldapadminldifpasswd, ldapinstallstep2 ]
+
+#Execute the Commands to upload the configuration files
+
+- block:
+  - name: "Update ldapadmin.ldif"
+    command: "/usr/bin/ldapmodify -Y EXTERNAL -H ldapi:/// -f {{openldap_directory}}/openldap/ldifs/ldapadmin.ldif"
+  become: yes
+  become_user: root
+  tags: [ updateldapadminldif, ldapinstallstep2 ]
+
+- block:
+  - name: "Update monitor.ldif"
+    command: "/usr/bin/ldapmodify -Y EXTERNAL -H ldapi:/// -f {{openldap_directory}}/openldap/ldifs/monitor.ldif"
+  become: yes
+  become_user: root
+  tags: [ updatemonitorldif, ldapinstallstep2 ]
+
+  #Certificate Generation for ldaps communication
+
+- block:
+  - name: "Certificate Generation For LDAPs"
+    command: >
+       openssl req -x509 -nodes -subj '/C={{ country }}/ST={{ state }}/L={{ language }}/O={{ organization }}/OU={{ organizationunit }}/CN={{ commonname }}' -days 365 -newkey rsa:2048 -sha256 -keyout {{ privatekey }} -out {{ selfcert }}   
+  become: yes
+  become_user: root
+  tags: [ generateldapcert, ldapinstallstep2 ]
+
+- block:
+  - name: "Update Permission"
+    command: chown ldap:ldap /etc/openldap/certs/ldaps.key
+  become: yes
+  become_user: root
+  tags: [ certspermissionupdate, ldapinstallstep2 ]
+
+- block:
+  - name: "Update Permission"
+    command: chown ldap:ldap /etc/openldap/certs/ldaps.cert
+  become: yes
+  become_user: root
+  tags: [ certspermissionupdate, ldapinstallstep2 ]
+
+- block:
+  - name: "Update cert.ldif"
+    command: "/usr/bin/ldapmodify -Y EXTERNAL -H ldapi:/// -f {{openldap_directory}}/openldap/ldifs/certs.ldif"
+  become: yes
+  become_user: root
+  tags: [ updatecertldif, ldapinstallstep2 ]
+
+  #Configuring LDAP Database
+
+- block:
+  - name: "Copy DB_CONFIG - var/lib/ldap"
+    copy:
+       src: "{{ openldap_directory }}/openldap/ldifs/DB_CONFIG"
+       dest: "/var/lib/ldap"
+       remote_src: yes
+  become: yes
+  become_user: root
+  tags: [ copydbconfig, ldapinstallstep2 ]
+
+- block:
+  - name: "Change Permisison - var/lib/ldap"
+    command: chown -R ldap:ldap /var/lib/ldap
+  become: yes
+  become_user: root
+  tags: [ changepermission, ldapinstallstep2 ]
+
+- block:
+  - name: "Update Internet X.500"
+    command: "/usr/bin/ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/cosine.ldif"
+  become: yes
+  become_user: root
+  tags: [ updatecosineldif, ldapinstallstep2 ]
+
+- block:
+  - name: "Update Network Information services Schema"
+    command: "/usr/bin/ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/nis.ldif"
+  become: yes
+  become_user: root
+  tags: [ updatenisldif, ldapinstallstep2 ]
+
+- block:
+  - name: "Update inetorgperson"
+    command: "/usr/bin/ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/inetorgperson.ldif"
+  become: yes
+  become_user: root
+  tags: [ updatepersonldif, ldapinstallstep2 ]
+
+- block:
+  - name: "Update baseS ldif"
+    command: '/usr/bin/ldapadd -x -D "cn=ldapadmin,dc=ajanthan,dc=lk,dc=com" -f {{openldap_directory}}/openldap/ldifs/base.ldif -w {{openldap_server_rootpw}}'
+  become: yes
+  become_user: root
+  tags: [ updatebaseldif, ldapinstallstep2 ]
+
+- block:
+  - name: "Enable Logs"
+    command: "/usr/bin/ldapmodify -Y EXTERNAL -H ldapi:/// -f {{openldap_directory}}/openldap/ldifs/logenable.ldif"
+  become: yes
+  become_user: root
+  tags: [ logenable, ldapinstallstep2 ]
+
+
+
+
+
+
+
+  

@@ -1,0 +1,14 @@
+dn: olcDatabase={2}hdb,cn=config
+changetype: modify
+replace: olcSuffix
+olcSuffix: dc=ajanthan,dc=lk,dc=com
+
+dn: olcDatabase={2}hdb,cn=config
+changetype: modify
+replace: olcRootDN
+olcRootDN: cn=ldapadmin,dc=ajanthan,dc=lk,dc=com
+
+dn: olcDatabase={2}hdb,cn=config
+changeType: modify
+replace: olcRootPW
+olcRootPW: {{rootpwgenerated.stdout}}

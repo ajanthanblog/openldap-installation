@@ -1,0 +1,25 @@
+# This is a base.ldif
+
+dn: dc=ajanthan,dc=lk,dc=com
+dc: ajanthan
+objectClass: top
+objectClass: domain
+
+dn: cn=ldapadmin,dc=ajanthan,dc=lk,dc=com
+objectClass: organizationalRole
+cn: ldapadmin
+description: LDAP Manager
+
+dn: ou=users,dc=ajanthan,dc=lk,dc=com
+objectClass: organizationalUnit
+ou: users
+
+dn: ou=groups,dc=ajanthan,dc=lk,dc=com
+objectClass: organizationalUnit
+ou: groups
+
+
+
+
+
+

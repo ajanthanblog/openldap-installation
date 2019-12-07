@@ -1,0 +1,27 @@
+# List of configuration file templates, and the paths they should be written to
+
+openldap_directory: "/openldapserver"
+openldap_server_password_hash: "{SSHA}"  
+openldap_server_rootpw: "test123"
+
+config_files:
+  - { src: 'etc/openldap/slapd.d/monitor.ldif.j2',
+      dest: '{{ openldap_directory }}/openldap/ldifs/monitor.ldif' }
+  - { src: 'etc/openldap/slapd.d/DB_CONFIG.j2',
+      dest: '{{ openldap_directory }}/openldap/ldifs/DB_CONFIG' }
+  - { src: 'etc/openldap/slapd.d/base.ldif.j2',
+      dest: '{{ openldap_directory }}/openldap/ldifs/base.ldif' }
+  - { src: 'etc/openldap/slapd.d/certs.ldif.j2',
+      dest: '{{ openldap_directory }}/openldap/ldifs/certs.ldif' }
+  - { src: 'etc/openldap/slapd.d/logenable.ldif.j2',
+      dest: '{{ openldap_directory }}/openldap/ldifs/logenable.ldif' }
+
+
+country: LK
+state: COLOMBO
+language: EN
+organization: AJANTHAN
+organizationunit: IT
+commonname: "*.ajanthan.com"
+privatekey: /etc/openldap/certs/ldaps.key
+selfcert: /etc/openldap/certs/ldaps.cert
