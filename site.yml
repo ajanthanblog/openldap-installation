@@ -1,0 +1,6 @@
+---
+- name: Open LDAP Installation
+  hosts: openldap
+  roles:
+    - role: open-ldap-installation
+  tags: [ openldapinstallation ]
